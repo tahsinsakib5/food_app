@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:food_app/screan/order_confirm_page.dart';
-import 'package:food_app/screan/resturent_details_page.dart';
+import 'package:food_app/screan/resturent_details_page.dart' hide CheckoutPage, Text;
 import 'package:provider/provider.dart';
 
 // Add these missing imports (you'll need to create these files)
@@ -17,7 +17,7 @@ class CartBottomSheet extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CheckoutPage(restaurantName: restaurantName),
+        builder: (context) => CheckoutPages(restaurantName: restaurantName),
       ),
     );
   }

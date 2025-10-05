@@ -6,13 +6,14 @@ import 'package:food_app/screan/order_confirm_page.dart';
 import 'package:food_app/widget/check_out_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
-
 class CartItem {
   final String id;
   final String name;
   final double price;
   final String imageUrl;
   int quantity;
+  final String? restaurantId;
+  final String? restaurantName;
 
   CartItem({
     required this.id,
@@ -20,9 +21,36 @@ class CartItem {
     required this.price,
     required this.imageUrl,
     this.quantity = 1,
+    this.restaurantId,
+    this.restaurantName,
   });
 
   double get totalPrice => price * quantity;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'imageUrl': imageUrl,
+      'quantity': quantity,
+      'restaurantId': restaurantId,
+      'restaurantName': restaurantName,
+      'addedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  static CartItem fromMap(Map<String, dynamic> map) {
+    return CartItem(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      price: (map['price'] ?? 0.0).toDouble(),
+      imageUrl: map['imageUrl'] ?? '',
+      quantity: map['quantity'] ?? 1,
+      restaurantId: map['restaurantId'],
+      restaurantName: map['restaurantName'],
+    );
+  }
 
   CartItem copyWith({
     int? quantity,
@@ -33,13 +61,17 @@ class CartItem {
       price: price,
       imageUrl: imageUrl,
       quantity: quantity ?? this.quantity,
+      restaurantId: restaurantId,
+      restaurantName: restaurantName,
     );
   }
 }
 
-// Cart Provider (keep the same)
 class CartProvider extends ChangeNotifier {
   final List<CartItem> _items = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final User? _user = FirebaseAuth.instance.currentUser;
+  StreamSubscription? _cartSubscription;
 
   List<CartItem> get items => _items;
 
@@ -47,57 +79,156 @@ class CartProvider extends ChangeNotifier {
 
   double get totalPrice => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  void addItem(CartItem newItem) {
-    final index = _items.indexWhere((item) => item.id == newItem.id);
-    
-    if (index != -1) {
-      _items[index] = _items[index].copyWith(quantity: _items[index].quantity + 1);
-    } else {
-      _items.add(newItem);
-    }
-    notifyListeners();
-  }
+  void initializeCart() {
+    if (_user == null) return;
 
-  void removeItem(String itemId) {
-    _items.removeWhere((item) => item.id == itemId);
-    notifyListeners();
-  }
-
-  void updateQuantity(String itemId, int quantity) {
-    final index = _items.indexWhere((item) => item.id == itemId);
-    if (index != -1) {
-      if (quantity <= 0) {
-        _items.removeAt(index);
-      } else {
-        _items[index] = _items[index].copyWith(quantity: quantity);
+    _cartSubscription = _firestore
+        .collection('users')
+        .doc(_user!.uid)
+        .collection('cart')
+        .snapshots()
+        .listen((snapshot) {
+      _items.clear();
+      for (var doc in snapshot.docs) {
+        final cartItem = CartItem.fromMap(doc.data());
+        _items.add(cartItem);
       }
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('Error loading cart: $error');
+    });
+  }
+
+  void disposeCart() {
+    _cartSubscription?.cancel();
+  }
+
+  Future<void> addItem(CartItem newItem) async {
+    if (_user == null) return;
+
+    try {
+      final cartDoc = _firestore
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('cart')
+          .doc(newItem.id);
+
+      final existingDoc = await cartDoc.get();
+      
+      if (existingDoc.exists) {
+        final existingData = existingDoc.data() as Map<String, dynamic>;
+        final newQuantity = (existingData['quantity'] ?? 1) + 1;
+        await cartDoc.update({
+          'quantity': newQuantity,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await cartDoc.set(newItem.toMap());
+      }
+    } catch (e) {
+      debugPrint('Error adding item to cart: $e');
+      throw e;
     }
   }
 
-  void incrementQuantity(String itemId) {
+  Future<void> removeItem(String itemId) async {
+    if (_user == null) return;
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('cart')
+          .doc(itemId)
+          .delete();
+    } catch (e) {
+      debugPrint('Error removing item from cart: $e');
+      throw e;
+    }
+  }
+
+  Future<void> updateQuantity(String itemId, int quantity) async {
+    if (_user == null) return;
+
+    try {
+      if (quantity <= 0) {
+        await removeItem(itemId);
+      } else {
+        await _firestore
+            .collection('users')
+            .doc(_user!.uid)
+            .collection('cart')
+            .doc(itemId)
+            .update({
+          'quantity': quantity,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating quantity: $e');
+      throw e;
+    }
+  }
+
+  Future<void> incrementQuantity(String itemId) async {
     final index = _items.indexWhere((item) => item.id == itemId);
     if (index != -1) {
-      _items[index] = _items[index].copyWith(quantity: _items[index].quantity + 1);
-      notifyListeners();
+      final newQuantity = _items[index].quantity + 1;
+      await updateQuantity(itemId, newQuantity);
     }
   }
 
-  void decrementQuantity(String itemId) {
+  Future<void> decrementQuantity(String itemId) async {
     final index = _items.indexWhere((item) => item.id == itemId);
     if (index != -1) {
       if (_items[index].quantity > 1) {
-        _items[index] = _items[index].copyWith(quantity: _items[index].quantity - 1);
+        final newQuantity = _items[index].quantity - 1;
+        await updateQuantity(itemId, newQuantity);
       } else {
-        _items.removeAt(index);
+        await removeItem(itemId);
       }
-      notifyListeners();
     }
   }
 
-  void clearCart() {
-    _items.clear();
-    notifyListeners();
+  Future<void> clearCart() async {
+    if (_user == null) return;
+
+    try {
+      final cartSnapshot = await _firestore
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('cart')
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in cartSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error clearing cart: $e');
+      throw e;
+    }
+  }
+
+  static Future<int> getCartItemsCount(String userId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .get();
+      
+      int totalCount = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        totalCount += (data['quantity'] ?? 1) as int;
+      }
+      return totalCount;
+    } catch (e) {
+      debugPrint('Error getting cart count: $e');
+      return 0;
+    }
   }
 }
 
@@ -127,11 +258,18 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
   void initState() {
     super.initState();
     _setupFoodStream();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.initializeCart();
+    });
   }
 
   @override
   void dispose() {
     _foodSubscription?.cancel();
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    cartProvider.disposeCart();
     super.dispose();
   }
 
@@ -177,6 +315,36 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
       isScrollControlled: true,
       builder: (context) => CartBottomSheet(restaurantName: widget.restaurant['name'] ?? 'Restaurant'),
     );
+  }
+
+  void _addToCart(BuildContext context, Map<String, dynamic> food) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    
+    final cartItem = CartItem(
+      id: food['id'],
+      name: food['name'] ?? 'Unknown Food',
+      price: food['price']?.toDouble() ?? 0.0,
+      imageUrl: food['imageUrl'] ?? '',
+      restaurantId: widget.restaurantId,
+      restaurantName: widget.restaurant['name'],
+    );
+    
+    cartProvider.addItem(cartItem).then((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${food['name']} added to cart'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }).catchError((error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to add item: $error'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    });
   }
 
   @override
@@ -245,7 +413,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                Icon(Icons.location_on, size: 20, color: Colors.grey),
+                                Icon(Icons.location_on, size: 20, color: Colors.grey[600]),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
@@ -258,7 +426,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(Icons.access_time, size: 20, color: Colors.grey),
+                                Icon(Icons.access_time, size: 20, color: Colors.grey[600]),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Open ${widget.restaurant['openingTime'] ?? '09:00'} - ${widget.restaurant['closingTime'] ?? '22:00'}',
@@ -350,6 +518,11 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
   Widget _buildFoodItem(Map<String, dynamic> food) {
     return Consumer<CartProvider>(
       builder: (context, cart, child) {
+        final cartItem = cart.items.firstWhere(
+          (item) => item.id == food['id'],
+          orElse: () => CartItem(id: '', name: '', price: 0, imageUrl: ''),
+        );
+        
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Padding(
@@ -435,7 +608,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _buildCartControls(food, cart),
+                    _buildCartControls(food, cart, cartItem),
                   ],
                 ),
               ],
@@ -446,12 +619,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
     );
   }
 
-  Widget _buildCartControls(Map<String, dynamic> food, CartProvider cart) {
-    final cartItem = cart.items.firstWhere(
-      (item) => item.id == food['id'],
-      orElse: () => CartItem(id: '', name: '', price: 0, imageUrl: ''),
-    );
-    
+  Widget _buildCartControls(Map<String, dynamic> food, CartProvider cart, CartItem cartItem) {
     if (cartItem.id.isNotEmpty) {
       // Item in cart - show quantity controls
       return Container(
@@ -480,23 +648,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
     } else {
       // Item not in cart - show Add button
       return ElevatedButton(
-        onPressed: () {
-          final cartItem = CartItem(
-            id: food['id'],
-            name: food['name'] ?? 'Unknown Food',
-            price: food['price']?.toDouble() ?? 0.0,
-            imageUrl: food['imageUrl'] ?? '',
-          );
-          cart.addItem(cartItem);
-          
-          // Show snackbar
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${food['name']} added to cart'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
+        onPressed: () => _addToCart(context, food),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.orange,
           foregroundColor: Colors.white,
@@ -510,7 +662,6 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
   }
 }
 
-// Cart Bottom Sheet Widget
 class CartBottomSheet extends StatelessWidget {
   final String restaurantName;
 
@@ -520,7 +671,7 @@ class CartBottomSheet extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CheckoutPage(restaurantName: restaurantName),
+        builder: (context) => CheckoutPages(restaurantName:"f",),
       ),
     );
   }
@@ -684,4 +835,3 @@ class CartBottomSheet extends StatelessWidget {
   }
 }
 
-// Simple CheckoutPage placeholder - you'll need to implement this fully

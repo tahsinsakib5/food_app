@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:food_app/screan/order_lottie%20animation_page.dart';
 import 'package:food_app/screan/resturent_details_page.dart';
 import 'package:food_app/widget/location_container.dart';
 import 'package:food_app/widget/map_selector.dart';
@@ -6,16 +7,16 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class CheckoutPage extends StatefulWidget {
+class CheckoutPages extends StatefulWidget {
   final String restaurantName;
 
-  const CheckoutPage({super.key, required this.restaurantName});
+  const CheckoutPages({super.key, required this.restaurantName});
 
   @override
-  State<CheckoutPage> createState() => _CheckoutPageState();
+  State<CheckoutPages> createState() => _CheckoutPagesState();
 }
 
-class _CheckoutPageState extends State<CheckoutPage> {
+class _CheckoutPagesState extends State<CheckoutPages> {
   
   var _selectedLocation;
 
@@ -137,7 +138,21 @@ class _CheckoutPageState extends State<CheckoutPage> {
         DocumentReference orderRef = await _firestore.collection('orders').add(orderData);
 
         // Show order confirmation
+
+    Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => OrderConfirmPage(
+      cart: cart,
+      orderNumber: orderRef.id,
+    ),
+  ),
+);
+
         _showOrderConfirmation(cart, orderRef.id);
+
+
+ 
         
       } catch (error) {
         print('Error placing order: $error');

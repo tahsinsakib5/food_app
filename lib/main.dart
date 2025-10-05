@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:food_app/Authication/aaaaaauthcheck_page.dart';
 import 'package:food_app/firebase_options.dart';
 import 'package:food_app/screan/first_page.dart';
 import 'package:food_app/screan/home_page.dart';
@@ -37,7 +38,7 @@ class MyApp extends StatelessWidget {
        
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: Firstpage(restaurantName: 'My Restaurant',)
+      home: AuthCheckPage()
       
     
     );
