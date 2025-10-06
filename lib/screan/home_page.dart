@@ -1,19 +1,28 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:food_app/Authication/aaaaaauthcheck_page.dart';
 import 'package:food_app/screan/resturent_details_page.dart';
 import 'package:food_app/widget/cart.dart';
 
 
-class AllResturentList extends StatelessWidget {
-  const AllResturentList({
+class HomePage extends StatelessWidget {
+  const HomePage({
     Key? key,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        backgroundColor: Colors.amber,
+
+        leading: IconButton(onPressed: () {
+          FirebaseAuth.instance.signOut();
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AuthCheckPage()));
+        }, icon:Icon(Icons.arrow_back_ios)),
+      ),
   
       body: Container(
         padding: EdgeInsets.all(10),

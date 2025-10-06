@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:food_app/screan/food_details_page.dart';
 import 'package:food_app/screan/order_confirm_page.dart';
 import 'package:food_app/widget/check_out_bottom_sheet.dart';
 import 'package:provider/provider.dart';
@@ -523,95 +524,100 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> {
           orElse: () => CartItem(id: '', name: '', price: 0, imageUrl: ''),
         );
         
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Food image
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.grey[300],
-                  ),
-                  child: food['imageUrl'] != null && food['imageUrl'].toString().isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            food['imageUrl'].toString(),
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.fastfood, color: Colors.grey),
-                              );
-                            },
+        return InkWell(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) =>FoodDetailsPage(restaurantId: widget.restaurantId!, foodId: food['id'],initialData:food,) ,));
+          },
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Food image
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[300],
+                    ),
+                    child: food['imageUrl'] != null && food['imageUrl'].toString().isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              food['imageUrl'].toString(),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.fastfood, color: Colors.grey),
+                                );
+                              },
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.fastfood, color: Colors.grey),
                           ),
-                        )
-                      : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.fastfood, color: Colors.grey),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Food details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          food['name']?.toString() ?? "Unknown Food",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                ),
-                const SizedBox(width: 12),
-                
-                // Food details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 4),
+                        Text(
+                          food['description']?.toString() ?? "No description available",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              (food['rating']?.toStringAsFixed(1) ?? "0.0"),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Price and Add to Cart button
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        food['name']?.toString() ?? "Unknown Food",
+                        '\$${(food['price']?.toStringAsFixed(2) ?? "0.00")}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        food['description']?.toString() ?? "No description available",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                       const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            (food['rating']?.toStringAsFixed(1) ?? "0.0"),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
+                      _buildCartControls(food, cart, cartItem),
                     ],
                   ),
-                ),
-                
-                // Price and Add to Cart button
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '\$${(food['price']?.toStringAsFixed(2) ?? "0.00")}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildCartControls(food, cart, cartItem),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -671,13 +677,14 @@ class CartBottomSheet extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CheckoutPages(restaurantName:"f",),
+        builder: (context) => CheckoutPages(restaurantId: 
+        "restaurantName"),
       ),
-    );
+    );    
   }
 
-  @override
-  Widget build(BuildContext context) {
+  @override                       
+  Widget build(BuildContext context) {        
     return Consumer<CartProvider>(
       builder: (context, cart, child) {
         return Container(

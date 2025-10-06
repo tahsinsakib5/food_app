@@ -125,7 +125,7 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> {
                  
           
         ),
-      ),
+      ), 
     );
   }
 

@@ -61,7 +61,7 @@ class _FirstpageState extends State<Firstpage> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 60),
 
             // Selected Location Display
             if (_selectedLocation != null)

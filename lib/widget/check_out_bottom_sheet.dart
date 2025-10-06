@@ -9,15 +9,15 @@ import 'package:provider/provider.dart';
 // import 'package:food_app/widgets/location_display_container.dart';
 
 class CartBottomSheet extends StatelessWidget {
-  final String restaurantName;
+  final String restaurantId;
 
-  const CartBottomSheet({super.key, required this.restaurantName});
+  const CartBottomSheet({super.key, required this.restaurantId});
 
   void _showCheckoutPage(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CheckoutPages(restaurantName: restaurantName),
+        builder: (context) => CheckoutPages(restaurantId: restaurantId),
       ),
     );
   }

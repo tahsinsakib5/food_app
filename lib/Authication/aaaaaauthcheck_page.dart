@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:food_app/Authication/login_page.dart';
+import 'package:food_app/screan/first_page.dart';
 import 'package:food_app/screan/home_page.dart';
 
 class AuthCheckPage extends StatefulWidget {
@@ -30,13 +31,13 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
       // User is logged in, go to home page
       Navigator.pushReplacement(
         context, 
-        MaterialPageRoute(builder: (context) => AllResturentList())
+        MaterialPageRoute(builder: (context) => HomePage())
       );
     } else {
       // User is not logged in, go to login page
       Navigator.pushReplacement(
         context, 
-        MaterialPageRoute(builder: (context) => LoginPage())
+        MaterialPageRoute(builder: (context) => Firstpage(restaurantName: "stol haoya")),
       );
     }
   }

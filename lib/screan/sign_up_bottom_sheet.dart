@@ -399,7 +399,6 @@ class _RegistrationBottomSheetState extends State<RegistrationBottomSheet> {
 
         // Show success message
 
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AllResturentList(),));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account created successfully! Please verify your email.'),
@@ -409,9 +408,9 @@ class _RegistrationBottomSheetState extends State<RegistrationBottomSheet> {
         );
 
         // Close bottom sheet and navigate
-        Navigator.pop(context); // Close bottom sheet
-        Navigator.pop(context); // Go back to first page
+    // Go back to first page
 
+        Navigator.push(context, MaterialPageRoute(builder: (context) => HomePage(),));
       } on FirebaseAuthException catch (e) {
         setState(() {
           _isLoading = false;

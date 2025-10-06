@@ -8,9 +8,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class CheckoutPages extends StatefulWidget {
-  final String restaurantName;
+  final String restaurantId;
 
-  const CheckoutPages({super.key, required this.restaurantName});
+  const CheckoutPages({super.key, required this.restaurantId});
 
   @override
   State<CheckoutPages> createState() => _CheckoutPagesState();
@@ -109,7 +109,7 @@ class _CheckoutPagesState extends State<CheckoutPages> {
         Map<String, dynamic> orderData = {
           'userId': user?.uid ?? 'guest',
           'userEmail': user?.email ?? 'guest',
-          'restaurantName': widget.restaurantName,
+          'restaurantName': widget.restaurantId,
           'totalPrice': cart.totalPrice,
           'deliveryStatus': 'pending', // Initial status
           'orderDate': FieldValue.serverTimestamp(),
@@ -180,7 +180,7 @@ class _CheckoutPagesState extends State<CheckoutPages> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Order ID: $orderId'),
-            Text('Restaurant: ${widget.restaurantName}'),
+            Text('Restaurant: ${widget.restaurantId}'),
             Text('Total: \$${cart.totalPrice.toStringAsFixed(2)}'),
             Text('Items: ${cart.totalItems}'),
             Text('Delivery to: ${_addressController.text}'),
